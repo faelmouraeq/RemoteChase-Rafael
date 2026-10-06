@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using RemoteChase.Combat; // Importa o namespace onde o DroneAim está
+using UnityEngine.Audio; // Necessário para mexer no Mixer
 
 public class PauseMenuController : MonoBehaviour
 {
@@ -11,6 +12,8 @@ public class PauseMenuController : MonoBehaviour
     [Header("Referências de Gameplay")]
     public GameObject gameHUD; // Objeto visual da HUD/Mira
     public DroneAim droneAimScript; // Arraste o objeto do Drone aqui no Inspetor!
+    [Header("Áudio / Configurações")]
+    public AudioMixer mainAudioMixer; // Arraste o seu AudioMixer aqui no Inspector
 
     private bool isPaused = false;
 
@@ -97,5 +100,23 @@ public class PauseMenuController : MonoBehaviour
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
         SceneManager.LoadScene("Menu"); 
+    }
+    public void SetBGMVolume(float sliderValue)
+    {
+        // Converte o valor linear do Slider (0.0001 a 1) para Decibéis (-80dB a 0dB) de forma logarítmica
+        mainAudioMixer.SetFloat("BGMVolume", Mathf.Log10(Mathf.Clamp(sliderValue, 0.0001f, 1f)) * 20f);
+    }
+
+    // CONTROLE DE VOLUME DOS EFEITOS (SFX)
+    public void SetSFXVolume(float sliderValue)
+    {
+        mainAudioMixer.SetFloat("SFXVolume", Mathf.Log10(Mathf.Clamp(sliderValue, 0.0001f, 1f)) * 20f);
+    }
+
+    // OPÇÃO DE MUTE GERAL
+    public void ToggleMute(bool isMuted)
+    {
+        // Pausa ou despausa todos os sons do jogo instantaneamente
+        AudioListener.pause = isMuted;
     }
 }

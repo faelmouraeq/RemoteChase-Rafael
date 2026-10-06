@@ -45,6 +45,13 @@ namespace RemoteChase.Combat
         [Tooltip("Quantos projeteis o pool cria de uma vez.")]
         public int poolSize = 32;
 
+        [Header("Áudio (SFX)")]
+        [Tooltip("Arquivo de som do tiro (ex: tiro1).")]
+        public AudioClip shootSound;
+
+        [Tooltip("Audio Source responsável por tocar o som do tiro.")]
+        public AudioSource audioSource;
+
         /// <summary>
         /// 0 = drone parado, tiro sai exatamente na mira. 1 = manobrando forte,
         /// o tiro passa longe. O HUD usa isto para abrir o retículo.
@@ -64,6 +71,12 @@ namespace RemoteChase.Combat
         {
             _aim = GetComponent<DroneAim>();
             _motion = GetComponent<IDroneMotion>();
+
+            // Se o AudioSource não foi arrastado no Inspector, tenta pegar no mesmo objeto
+            if (audioSource == null)
+            {
+                audioSource = GetComponent<AudioSource>();
+            }
 
             _poolRoot = new GameObject("Projeteis").transform;
             for (int i = 0; i < poolSize; i++) _pool.Push(CreateProjectile());
@@ -111,6 +124,12 @@ namespace RemoteChase.Combat
             if (_motion != null)
             {
                 velocity += _motion.ManeuverVelocity * maneuverDrift;
+            }
+
+            // TOCA O EFEITO SONORO DO TIRO
+            if (audioSource != null && shootSound != null)
+            {
+                audioSource.PlayOneShot(shootSound);
             }
 
             Projectile projectile = _pool.Count > 0 ? _pool.Pop() : CreateProjectile();
