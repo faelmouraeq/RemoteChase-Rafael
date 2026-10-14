@@ -178,6 +178,13 @@ namespace RemoteChase.Drone
 
         void OnTriggerEnter(Collider other)
         {
+            // IGORAR POWER-UPS: Se o objeto tocado for um power-up, o drone passa direto sem sofrer dano/batida.
+            if (other.GetComponent<RemoteChase.Gameplay.PowerUp>() != null || 
+                other.GetComponentInParent<RemoteChase.Gameplay.PowerUp>() != null)
+            {
+                return;
+            }
+
             if (_crashTimer > 0f) return;
             _crashTimer = crashCooldown;
 
