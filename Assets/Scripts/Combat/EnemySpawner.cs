@@ -32,7 +32,7 @@ namespace RemoteChase.Combat
         public float swarmSize = 1.8f;
         
         [Tooltip("Quantos drones kamikazes formam cada lote/onda do enxame.")]
-        public int swarmClusterSize = 3; // <--- AGORA CONFIGURÁVEL DIRETO NO INSPETOR!
+        public int swarmClusterSize = 3;
 
         public Material swarmMaterial;
         public GameObject swarmPrefab;
@@ -105,6 +105,11 @@ namespace RemoteChase.Combat
 
         void TrySpawn()
         {
+            // === TRAVA DE SEGURANÇA DO CHEFE ===
+            // Procura o chefe na cena. Se ele estiver ativo, os sentinelas comuns param de nascer!
+            GameObject bossObj = GameObject.Find("Boss_HiveDrone");
+            if (bossObj != null && bossObj.activeSelf) return;
+
             if (drone == null || _alive.Count >= maxAlive) return;
 
             _spawnTimer -= Time.deltaTime;
@@ -175,6 +180,11 @@ namespace RemoteChase.Combat
 
         void TrySpawnSwarm()
         {
+            // === TRAVA DE SEGURANÇA DO CHEFE PARA O ENXAME ===
+            // Se o chefe estiver ativo, os kamikazes comuns também dão uma trégua!
+            GameObject bossObj = GameObject.Find("Boss_HiveDrone");
+            if (bossObj != null && bossObj.activeSelf) return;
+
             if (drone == null || _swarmAlive.Count >= maxSwarmAlive) return;
 
             float progress = drone.SpeedProgress;
@@ -190,7 +200,6 @@ namespace RemoteChase.Combat
 
         System.Collections.IEnumerator SpawnSwarmClusterRoutine()
         {
-            // Usa a variável configurável do Inspetor para definir quantos drones vêm no lote
             for (int i = 0; i < swarmClusterSize; i++)
             {
                 if (drone == null) yield break;

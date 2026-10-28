@@ -103,6 +103,14 @@ namespace RemoteChase.Game
                 return;
             }
 
+            // SE ESTAMOS NA ÚLTIMA FASE (Fase do Chefe), ignoramos a distância limite!
+            // A fase só vai acabar quando o BossVictoryManager chamar o fim de jogo.
+            if (_director != null && _director.IsLastPhase)
+            {
+                return; 
+            }
+
+            // Comportamento normal para as fases anteriores (ex: Fase 1)
             if (Distance < PhaseTarget) return;
 
             // Chegou ao fim da fase: se houver proxima, troca; se nao, venceu.
@@ -110,7 +118,6 @@ namespace RemoteChase.Game
 
             Finish(true);
         }
-
         /// <summary>Registra um abate. Chamado pelo gerador do corredor.</summary>
         public void RegisterKill()
         {
