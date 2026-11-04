@@ -11,6 +11,7 @@ namespace RemoteChase.Combat
         public BossPart coreBossPart;
 
         [Header("Configuração de Fim de Jogo")]
+        [Tooltip("Nome exato da cena de vitória para onde o jogo vai após derrotar o chefe.")]
         public string victorySceneName = "VictoryScene";
 
         private bool isDefeated = false;
@@ -31,17 +32,14 @@ namespace RemoteChase.Combat
             isDefeated = true;
             Debug.Log("🏆 CHEFE DERROTADO! A Fase 2 foi vencida!");
 
-            // Aqui você poderá chamar sua tela de vitória no futuro
-            // Exemplo: SceneManager.LoadScene(victorySceneName);
-
-            // Por enquanto, chamamos uma rotina de transição ou pausa
+            // Aguarda 2.5 segundos para o jogador apreciar a vitória e chama a transição
             Invoke(nameof(TriggerVictorySequence), 2.5f);
         }
 
         void TriggerVictorySequence()
         {
-            Debug.Log("✨ Transição para a Tela de Vitória acionada com sucesso!");
-            // Coloque aqui a lógica do seu painel de UI de vitória ou carregamento de cena.
+            Debug.Log($"✨ Carregando a cena de vitória: {victorySceneName}");
+            SceneManager.LoadScene(victorySceneName);
         }
     }
 }

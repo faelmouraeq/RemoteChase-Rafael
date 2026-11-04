@@ -129,3 +129,4 @@ MonoBehaviour:
   damage: 12
   lifetime: 4
   hitRadius: 1.8
+  trackingSpeed: 5

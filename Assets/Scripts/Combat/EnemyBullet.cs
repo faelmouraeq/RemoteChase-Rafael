@@ -4,11 +4,7 @@ using UnityEngine;
 namespace RemoteChase.Combat
 {
     /// <summary>
-    /// Tiro inimigo: uma esfera que viaja de verdade, para dar tempo de desviar.
-    /// O tiro do jogador e hitscan; o do inimigo nao, de proposito -- se fosse
-    /// instantaneo nao haveria jogo, so dano inevitavel.
-    ///
-    /// Vem do <see cref="EnemyBulletPool"/>: nunca e destruido, so desativado.
+    /// Tiro inimigo com sistema Homing (Teleguiado) e trava de perseguição frontal.
     /// </summary>
     [AddComponentMenu("Remote Chase/Enemy Bullet")]
     public class EnemyBullet : MonoBehaviour
@@ -25,13 +21,16 @@ namespace RemoteChase.Combat
         [Tooltip("Distancia do drone em que o tiro conta como acerto.")]
         public float hitRadius = 1.8f;
 
+        [Header("Mecânica Teleguiada")]
+        [Tooltip("Velocidade com que o tiro corrige a rota (0 = linha reta, 5 = teleguiado).")]
+        public float trackingSpeed = 3f;
+
         Vector3 _direction;
         float _age;
         Transform _player;
         PlayerHealth _health;
         Action<EnemyBullet> _onDone;
 
-        /// <summary>Coloca o tiro em movimento.</summary>
         public void Launch(Vector3 position, Vector3 direction, PlayerHealth target,
                            Action<EnemyBullet> onDone)
         {
@@ -47,10 +46,27 @@ namespace RemoteChase.Combat
         void Update()
         {
             float dt = Time.deltaTime;
+
+            if (_player != null && trackingSpeed > 0f)
+            {
+                // Calcula onde o drone está agora
+                Vector3 targetDirection = (_player.position - transform.position).normalized;
+
+                // O Produto Escalar (Dot) verifica se o player ainda está "à frente" da bala.
+                if (Vector3.Dot(_direction, targetDirection) > 0f)
+                {
+                    _direction = Vector3.Slerp(_direction, targetDirection, trackingSpeed * dt).normalized;
+
+                    if (_direction != Vector3.zero)
+                    {
+                        transform.rotation = Quaternion.LookRotation(_direction);
+                    }
+                }
+            }
+
+            // Move a bala
             transform.position += _direction * (speed * dt);
 
-            // Acerto por distancia, nao por collider: o drone detecta batida com
-            // OnTriggerEnter, entao um collider aqui contaria como bater em predio.
             if (_player != null
                 && (_player.position - transform.position).sqrMagnitude < hitRadius * hitRadius)
             {
