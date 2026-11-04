@@ -311,7 +311,7 @@ namespace RemoteChase.World
 
                 segment.Buildings[i].localPosition = new Vector3(x, 0f, z);
 
-                float yRotation = rightSide ? 180f : 0f;
+                float yRotation = rightSide ? 0f : 180f;
                 segment.Buildings[i].localRotation = Quaternion.Euler(0f, yRotation, 0f);
             }
 

@@ -190,7 +190,7 @@ MonoBehaviour:
   segmentsBehind: 2
   corridorHalfWidth: 25
   ceilingHeight: 0
-  buildingsPerSide: 5
+  buildingsPerSide: 7
   widthRange: {x: 10, y: 22}
   heightRange: {x: 30, y: 110}
   setbackRange: 10
@@ -201,9 +201,9 @@ MonoBehaviour:
   pickupChance: 0.28
   pickupSize: 1.2
   buildingPrefabs:
-  - {fileID: 2689570472980505882, guid: f332f02fdd1c670fdbe8677a55c29b9e, type: 3}
-  - {fileID: 726743652064933786, guid: 8b08b55873e6439d18640c3436707f55, type: 3}
-  - {fileID: 8271487433676269219, guid: aa5967253cd9493ada22cf2d7087c595, type: 3}
+  - {fileID: 448166209863930973, guid: 45d9b2f5d6dc5debaaf58c4b3b781b9a, type: 3}
+  - {fileID: 3835581679955364358, guid: 449fd24b27af679ca875fcc1028740c5, type: 3}
+  - {fileID: 4133228713675440194, guid: 257b82684df342b669a1e6345d9254ec, type: 3}
   repairPrefab: {fileID: 762368244551894110, guid: a3c27a9d2b1e0937b83f0e2a0475acf5, type: 3}
   shieldPrefab: {fileID: 8897185839037469903, guid: d413993a779767ce08dc4a4c0f4e4c26, type: 3}
   energyPrefab: {fileID: 6366496425107419594, guid: cfaa0921565b24786a54ed206d066e71, type: 3}
