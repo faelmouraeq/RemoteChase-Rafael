@@ -75,6 +75,11 @@ namespace RemoteChase.Game
 
             if (_corridor != null)
             {
+                // A NOSSA MÁGICA AUTOMÁTICA ENTRA AQUI:
+                // Se o índice for 0 (Fase 1), isTunnelMode fica falso (Cidade).
+                // Se o índice for 1 (Fase 2), isTunnelMode fica verdadeiro (Túnel).
+                _corridor.isTunnelMode = (index == 1); 
+
                 _corridor.corridorHalfWidth = phase.corridorHalfWidth;
                 _corridor.ceilingHeight = phase.ceilingHeight;
                 _corridor.heightRange = phase.buildingHeightRange;

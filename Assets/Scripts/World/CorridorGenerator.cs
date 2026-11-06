@@ -6,6 +6,10 @@ namespace RemoteChase.World
     [AddComponentMenu("Remote Chase/Corridor Generator")]
     public class CorridorGenerator : MonoBehaviour
     {
+        [Header("Controle de Fase")]
+        [Tooltip("Desmarque para a Fase 1 (Cidade). Marque para a Fase 2 (Túnel).")]
+        public bool isTunnelMode = false;
+
         [Header("Alvo")]
         public Transform follow;
 
@@ -14,15 +18,21 @@ namespace RemoteChase.World
         public int segmentsAhead = 14;
         public int segmentsBehind = 2;
         
+        [Header("Fase 1 (Cidade)")]
         [Tooltip("Largura do corredor: afasta ou aproxima os prédios do centro.")]
         public float corridorHalfWidth = 25f;
         public float ceilingHeight;
-
-        [Header("Predios")]
         public int buildingsPerSide = 3;
         public Vector2 widthRange = new Vector2(10f, 22f);
         public Vector2 heightRange = new Vector2(30f, 110f);
         public float setbackRange = 10f;
+        [Tooltip("Arraste aqui os prefabs dos seus prédios: [0] Baixo, [1] Médio, [2] Alto.")]
+        public GameObject[] buildingPrefabs;
+
+        [Header("Fase 2 (Esgoto)")]
+        public float tunnelDiameter = 50f;
+        [Tooltip("Arraste aqui o Prefab do seu tubo do Blender.")]
+        public GameObject tunnelPrefab;
 
         [Header("Obstaculos")]
         [Range(0f, 1f)] public float obstacleChance = 0.25f;
@@ -33,10 +43,6 @@ namespace RemoteChase.World
         public int pickupsPerSegment = 1;
         [Range(0f, 1f)] public float pickupChance = 0.22f;
         public float pickupSize = 1.8f;
-
-        [Header("Arte dos Prédios (Novos Modelos)")]
-        [Tooltip("Arraste aqui os prefabs dos seus prédios: [0] Baixo, [1] Médio, [2] Alto.")]
-        public GameObject[] buildingPrefabs;
 
         [Header("Outros Prefabs e Itens")]
         public GameObject repairPrefab;
@@ -66,6 +72,7 @@ namespace RemoteChase.World
             public Transform Ground;
             public Transform Ceiling;
             public Transform[] Buildings;
+            public Transform Tunnel; // NOVO: A referência do tubo!
             public Transform Obstacle;
             public Combat.Pickup[] Pickups;
             public int Index = -1;
@@ -115,17 +122,11 @@ namespace RemoteChase.World
 
             ApplyMaterials();
 
-            int startIndex = follow != null
-                ? Mathf.FloorToInt(follow.position.z / segmentLength) - segmentsBehind
-                : 0;
-
+            int startIndex = follow != null ? Mathf.FloorToInt(follow.position.z / segmentLength) - segmentsBehind : 0;
             _firstIndex = startIndex;
             _nextIndex = startIndex;
 
-            foreach (Segment segment in _segments)
-            {
-                Place(segment, _nextIndex++);
-            }
+            foreach (Segment segment in _segments) Place(segment, _nextIndex++);
         }
 
         void ApplyMaterials()
@@ -136,12 +137,10 @@ namespace RemoteChase.World
 
                 SetMaterial(segment.Ground, groundMaterial);
                 SetMaterial(segment.Ceiling, groundMaterial);
+                SetMaterial(segment.Tunnel, groundMaterial); // O tubo também ganha o material do chão
                 SetMaterial(segment.Obstacle, PickMaterial(0));
 
-                for (int i = 0; i < segment.Buildings.Length; i++)
-                {
-                    SetMaterial(segment.Buildings[i], PickMaterial(i));
-                }
+                for (int i = 0; i < segment.Buildings.Length; i++) SetMaterial(segment.Buildings[i], PickMaterial(i));
             }
         }
 
@@ -162,19 +161,13 @@ namespace RemoteChase.World
                 Ground = CreateBlock(root, "Chao", groundMaterial),
                 Ceiling = CreateBlock(root, "Teto", groundMaterial),
                 Buildings = new Transform[buildingsPerSide * 2],
+                Tunnel = tunnelPrefab != null ? Instantiate(tunnelPrefab, root).transform : CreateBlock(root, "TuboFallback", groundMaterial),
                 Obstacle = CreateBlock(root, "Obstaculo", PickMaterial(0)),
                 Pickups = new Combat.Pickup[Mathf.Max(pickupsPerSegment, 0)]
             };
 
-            for (int i = 0; i < segment.Buildings.Length; i++)
-            {
-                segment.Buildings[i] = CreateBuildingTransform(root, i);
-            }
-
-            for (int i = 0; i < segment.Pickups.Length; i++)
-            {
-                segment.Pickups[i] = CreatePickup(root, i);
-            }
+            for (int i = 0; i < segment.Buildings.Length; i++) segment.Buildings[i] = CreateBuildingTransform(root, i);
+            for (int i = 0; i < segment.Pickups.Length; i++) segment.Pickups[i] = CreatePickup(root, i);
 
             return segment;
         }
@@ -182,54 +175,26 @@ namespace RemoteChase.World
         Transform CreateBuildingTransform(Transform parent, int index)
         {
             GameObject prefabToUse = null;
-
             if (buildingPrefabs != null && buildingPrefabs.Length > 0)
-            {
-                int randomIdx = UnityEngine.Random.Range(0, buildingPrefabs.Length);
-                prefabToUse = buildingPrefabs[randomIdx];
-            }
+                prefabToUse = buildingPrefabs[UnityEngine.Random.Range(0, buildingPrefabs.Length)];
 
-            GameObject body = prefabToUse != null
-                ? Instantiate(prefabToUse, parent)
-                : GameObject.CreatePrimitive(PrimitiveType.Cube);
-
+            GameObject body = prefabToUse != null ? Instantiate(prefabToUse, parent) : GameObject.CreatePrimitive(PrimitiveType.Cube);
             body.name = $"Predio_{index}";
-            if (prefabToUse == null && groundMaterial != null)
-            {
-                body.GetComponent<MeshRenderer>().sharedMaterial = groundMaterial;
-            }
-
+            if (prefabToUse == null && groundMaterial != null) body.GetComponent<MeshRenderer>().sharedMaterial = groundMaterial;
             return body.transform;
         }
 
         Combat.Pickup CreatePickup(Transform parent, int index)
         {
-            // SORTEIO EQUILIBRADO: Alterna aleatoriamente entre os tipos de power-ups disponíveis
             int randomKind = UnityEngine.Random.Range(0, 3);
             Combat.PickupKind kind = (Combat.PickupKind)randomKind;
 
-            GameObject prefab = kind switch
-            {
-                Combat.PickupKind.Energia => energyPrefab,
-                Combat.PickupKind.Escudo => shieldPrefab,
-                _ => repairPrefab
-            };
+            GameObject prefab = kind switch { Combat.PickupKind.Energia => energyPrefab, Combat.PickupKind.Escudo => shieldPrefab, _ => repairPrefab };
+            Material material = kind switch { Combat.PickupKind.Energia => energyMaterial, Combat.PickupKind.Escudo => shieldMaterial, _ => pickupMaterial };
 
-            Material material = kind switch
-            {
-                Combat.PickupKind.Energia => energyMaterial,
-                Combat.PickupKind.Escudo => shieldMaterial,
-                _ => pickupMaterial
-            };
-
-            GameObject body = CreateVisual(parent, $"{kind}_{index}", prefab,
-                                           PrimitiveType.Capsule, material);
+            GameObject body = CreateVisual(parent, $"{kind}_{index}", prefab, PrimitiveType.Capsule, material);
             body.transform.localScale = Vector3.one * pickupSize;
-
-            foreach (Collider collider in body.GetComponentsInChildren<Collider>())
-            {
-                Destroy(collider);
-            }
+            foreach (Collider collider in body.GetComponentsInChildren<Collider>()) Destroy(collider);
 
             var pickup = body.AddComponent<Combat.Pickup>();
             pickup.kind = kind;
@@ -240,21 +205,12 @@ namespace RemoteChase.World
             return pickup;
         }
 
-        GameObject CreateVisual(Transform parent, string name, GameObject prefab,
-                                PrimitiveType fallback, Material material)
+        GameObject CreateVisual(Transform parent, string name, GameObject prefab, PrimitiveType fallback, Material material)
         {
-            GameObject body = prefab != null
-                ? Instantiate(prefab, parent)
-                : GameObject.CreatePrimitive(fallback);
-
+            GameObject body = prefab != null ? Instantiate(prefab, parent) : GameObject.CreatePrimitive(fallback);
             body.name = name;
             if (prefab == null) body.transform.SetParent(parent, false);
-
-            if (prefab == null && material != null)
-            {
-                body.GetComponent<MeshRenderer>().sharedMaterial = material;
-            }
-
+            if (prefab == null && material != null) body.GetComponent<MeshRenderer>().sharedMaterial = material;
             return body;
         }
 
@@ -281,38 +237,53 @@ namespace RemoteChase.World
         void Place(Segment segment, int index)
         {
             segment.Index = index;
-
             float baseZ = index * segmentLength;
             segment.Root.position = new Vector3(0f, 0f, baseZ);
-
             var random = new System.Random(seed + index);
 
-            segment.Ground.localPosition = new Vector3(0f, -0.5f, segmentLength * 0.5f);
-            segment.Ground.localScale = new Vector3(corridorHalfWidth * 4f, 1f, segmentLength);
-
-            bool roofed = ceilingHeight > 0f;
-            segment.Ceiling.gameObject.SetActive(roofed);
-            if (roofed)
+            // A MÁGICA ACONTECE AQUI: A ESCOLHA DA FASE
+            if (isTunnelMode)
             {
-                segment.Ceiling.localPosition =
-                    new Vector3(0f, ceilingHeight + 0.5f, segmentLength * 0.5f);
-                segment.Ceiling.localScale =
-                    new Vector3(corridorHalfWidth * 4f, 1f, segmentLength);
+                // MODO ESGOTO (Fase 2): Desliga cidade, liga túnel
+                segment.Ground.gameObject.SetActive(false);
+                segment.Ceiling.gameObject.SetActive(false);
+                for (int i = 0; i < segment.Buildings.Length; i++) segment.Buildings[i].gameObject.SetActive(false);
+
+                segment.Tunnel.gameObject.SetActive(true);
+                segment.Tunnel.localPosition = new Vector3(0f, 0f, segmentLength * 0.5f);
+                segment.Tunnel.localScale = new Vector3(tunnelDiameter, tunnelDiameter, segmentLength);
             }
-
-            for (int i = 0; i < segment.Buildings.Length; i++)
+            else
             {
-                bool rightSide = i % 2 == 0;
-                float setback = (float)random.NextDouble() * setbackRange;
-                float z = (i / 2 + (float)random.NextDouble()) * (segmentLength / buildingsPerSide);
+                // MODO CIDADE (Fase 1 original intacta): Desliga túnel, liga cidade
+                segment.Tunnel.gameObject.SetActive(false);
 
-                float x = corridorHalfWidth + setback;
-                if (!rightSide) x = -x;
+                segment.Ground.gameObject.SetActive(true);
+                segment.Ground.localPosition = new Vector3(0f, -0.5f, segmentLength * 0.5f);
+                segment.Ground.localScale = new Vector3(corridorHalfWidth * 4f, 1f, segmentLength);
 
-                segment.Buildings[i].localPosition = new Vector3(x, 0f, z);
+                bool roofed = ceilingHeight > 0f;
+                segment.Ceiling.gameObject.SetActive(roofed);
+                if (roofed)
+                {
+                    segment.Ceiling.localPosition = new Vector3(0f, ceilingHeight + 0.5f, segmentLength * 0.5f);
+                    segment.Ceiling.localScale = new Vector3(corridorHalfWidth * 4f, 1f, segmentLength);
+                }
 
-                float yRotation = rightSide ? 0f : 180f;
-                segment.Buildings[i].localRotation = Quaternion.Euler(0f, yRotation, 0f);
+                for (int i = 0; i < segment.Buildings.Length; i++)
+                {
+                    segment.Buildings[i].gameObject.SetActive(true);
+                    bool rightSide = i % 2 == 0;
+                    float setback = (float)random.NextDouble() * setbackRange;
+                    float z = (i / 2 + (float)random.NextDouble()) * (segmentLength / buildingsPerSide);
+                    float x = corridorHalfWidth + setback;
+                    if (!rightSide) x = -x;
+
+                    segment.Buildings[i].localPosition = new Vector3(x, 0f, z);
+                    
+                    float yRotation = rightSide ? -90f : 90f; // Sua correção mantida!
+                    segment.Buildings[i].localRotation = Quaternion.Euler(0f, yRotation, 0f);
+                }
             }
 
             PlaceObstacle(segment, random);
@@ -322,24 +293,14 @@ namespace RemoteChase.World
         void PlacePickups(Segment segment, System.Random random)
         {
             if (segment.Pickups == null) return;
-
             for (int i = 0; i < segment.Pickups.Length; i++)
             {
                 Combat.Pickup pickup = segment.Pickups[i];
                 if (pickup == null) continue;
-
-                if (random.NextDouble() >= pickupChance)
-                {
-                    pickup.gameObject.SetActive(false);
-                    continue;
-                }
-
-                float x = pickupAreaCenter.x
-                        + ((float)random.NextDouble() * 2f - 1f) * pickupAreaHalfExtents.x;
-                float y = pickupAreaCenter.y
-                        + ((float)random.NextDouble() * 2f - 1f) * pickupAreaHalfExtents.y;
+                if (random.NextDouble() >= pickupChance) { pickup.gameObject.SetActive(false); continue; }
+                float x = pickupAreaCenter.x + ((float)random.NextDouble() * 2f - 1f) * pickupAreaHalfExtents.x;
+                float y = pickupAreaCenter.y + ((float)random.NextDouble() * 2f - 1f) * pickupAreaHalfExtents.y;
                 float z = (float)random.NextDouble() * segmentLength;
-
                 pickup.Spawn(new Vector3(x, y, z), (float)random.NextDouble() * 6.28f);
             }
         }
@@ -350,18 +311,25 @@ namespace RemoteChase.World
             segment.Obstacle.gameObject.SetActive(active);
             if (!active) return;
 
-            float width = corridorHalfWidth * (0.5f + (float)random.NextDouble() * 0.5f);
-            float height = 6f + (float)random.NextDouble() * 10f;
-            float centerY = 8f + (float)random.NextDouble() * 12f;
-            float x = (random.NextDouble() < 0.5 ? -1f : 1f) * (corridorHalfWidth - width * 0.5f);
-
-            segment.Obstacle.localPosition = new Vector3(x, centerY, segmentLength * 0.5f);
-            segment.Obstacle.localScale = new Vector3(width, height, 4f);
-        }
-
-        static float Range(System.Random random, Vector2 range)
-        {
-            return Mathf.Lerp(range.x, range.y, (float)random.NextDouble());
+            // O tamanho do obstáculo adapta-se dependendo se está na cidade ou no túnel!
+            if (isTunnelMode)
+            {
+                float width = (tunnelDiameter * 0.4f) * (0.5f + (float)random.NextDouble() * 0.5f);
+                float height = 6f + (float)random.NextDouble() * 10f;
+                float centerY = 8f + (float)random.NextDouble() * 12f;
+                float x = (random.NextDouble() < 0.5 ? -1f : 1f) * (tunnelDiameter * 0.25f);
+                segment.Obstacle.localPosition = new Vector3(x, centerY, segmentLength * 0.5f);
+                segment.Obstacle.localScale = new Vector3(width, height, 4f);
+            }
+            else
+            {
+                float width = corridorHalfWidth * (0.5f + (float)random.NextDouble() * 0.5f);
+                float height = 6f + (float)random.NextDouble() * 10f;
+                float centerY = 8f + (float)random.NextDouble() * 12f;
+                float x = (random.NextDouble() < 0.5 ? -1f : 1f) * (corridorHalfWidth - width * 0.5f);
+                segment.Obstacle.localPosition = new Vector3(x, centerY, segmentLength * 0.5f);
+                segment.Obstacle.localScale = new Vector3(width, height, 4f);
+            }
         }
     }
 }
