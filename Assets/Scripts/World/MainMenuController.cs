@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using RemoteChase.Audio; // <-- Namespace do AudioManager global
 
 public class MainMenuController : MonoBehaviour
 {
@@ -18,6 +19,13 @@ public class MainMenuController : MonoBehaviour
     // Chamado pelo Botão JOGAR
     public void PlayGame()
     {
+        // 1. Avisa o gestor de áudio global para trocar para a música da corrida/gameplay
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayGameplayMusic();
+        }
+
+        // 2. Carrega a cena do jogo
         SceneManager.LoadScene("Corrida");
     }
 

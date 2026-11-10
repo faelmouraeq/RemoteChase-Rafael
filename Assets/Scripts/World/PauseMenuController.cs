@@ -2,7 +2,8 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using RemoteChase.Combat; 
 using UnityEngine.Audio; 
-using UnityEngine.UI; // <-- ADICIONADO: Necessário para acessar o componente Slider!
+using UnityEngine.UI;
+using RemoteChase.Audio;
 
 public class PauseMenuController : MonoBehaviour
 {
@@ -17,34 +18,36 @@ public class PauseMenuController : MonoBehaviour
     [Header("Áudio / Configurações")]
     public AudioMixer mainAudioMixer; 
     
-    // <-- NOVOS CAMPOS: Referências para os Sliders da UI
-    [Tooltip("Arraste o Slider de Música (BGM) aqui")]
     public Slider bgmSlider; 
-    [Tooltip("Arraste o Slider de Efeitos (SFX) aqui")]
     public Slider sfxSlider;
+    public Toggle muteToggle;
 
     private bool isPaused = false;
 
     void Start()
     {
-        // 1. PRIMEIRO: Definimos o volume e atualizamos os sliders (enquanto estão ativos)
-        float volumeInicial = 0.5f;
+        if (AudioManager.Instance != null)
+        {
+            if (bgmSlider != null) bgmSlider.value = AudioManager.Instance.BGMValue;
+            if (sfxSlider != null) sfxSlider.value = AudioManager.Instance.SFXValue;
+            if (muteToggle != null) muteToggle.isOn = AudioManager.Instance.IsMuted;
+        }
+        else
+        {
+            float volumeInicial = 0.5f;
+            if (bgmSlider != null) bgmSlider.value = volumeInicial;
+            if (sfxSlider != null) sfxSlider.value = volumeInicial;
+            SetBGMVolume(volumeInicial);
+            SetSFXVolume(volumeInicial);
+        }
 
-        if (bgmSlider != null) bgmSlider.value = volumeInicial;
-        if (sfxSlider != null) sfxSlider.value = volumeInicial;
-
-        // Por segurança, forçamos o Mixer a receber o valor inicial
-        SetBGMVolume(volumeInicial);
-        SetSFXVolume(volumeInicial);
-
-        // 2. SEGUNDO: Agora sim, com tudo configurado, escondemos os painéis
         if (pausePanel != null) pausePanel.SetActive(false);
         if (optionsPanel != null) optionsPanel.SetActive(false);
         
-        // Liga a HUD e garante que o jogo não está pausado
         if (gameHUD != null) gameHUD.SetActive(true);
         Time.timeScale = 1f;
     }
+
     void Update()
     {
         var keyboard = UnityEngine.InputSystem.Keyboard.current;
@@ -56,14 +59,8 @@ public class PauseMenuController : MonoBehaviour
             }
             else
             {
-                if (isPaused)
-                {
-                    ResumeGame();
-                }
-                else
-                {
-                    PauseGame();
-                }
+                if (isPaused) ResumeGame();
+                else PauseGame();
             }
         }
     }
@@ -117,16 +114,37 @@ public class PauseMenuController : MonoBehaviour
 
     public void SetBGMVolume(float sliderValue)
     {
-        mainAudioMixer.SetFloat("BGMVolume", Mathf.Log10(Mathf.Clamp(sliderValue, 0.0001f, 1f)) * 20f);
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.SetBGMVolume(sliderValue);
+        }
+        else if (mainAudioMixer != null)
+        {
+            mainAudioMixer.SetFloat("BGMVolume", Mathf.Log10(Mathf.Clamp(sliderValue, 0.0001f, 1f)) * 20f);
+        }
     }
 
     public void SetSFXVolume(float sliderValue)
     {
-        mainAudioMixer.SetFloat("SFXVolume", Mathf.Log10(Mathf.Clamp(sliderValue, 0.0001f, 1f)) * 20f);
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.SetSFXVolume(sliderValue);
+        }
+        else if (mainAudioMixer != null)
+        {
+            mainAudioMixer.SetFloat("SFXVolume", Mathf.Log10(Mathf.Clamp(sliderValue, 0.0001f, 1f)) * 20f);
+        }
     }
 
     public void ToggleMute(bool isMuted)
     {
-        AudioListener.pause = isMuted;
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.ToggleMute(isMuted);
+        }
+        else
+        {
+            AudioListener.pause = isMuted;
+        }
     }
 }
